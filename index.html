@@ -56,7 +56,7 @@ body[data-scene="night"] .ground{background:linear-gradient(180deg,#3f4a6b,#3540
 /* ---------- 蘑菇 ---------- */
 .pet-wrap{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);
   width:190px;height:200px;animation:breathe 3.6s ease-in-out infinite;will-change:transform}
-.pet-wrap svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 12px 14px rgba(120,80,60,.18))}
+.pet-wrap svg{width:100%;height:100%;overflow:visible}
 @keyframes breathe{0%,100%{transform:translateX(-50%) translateY(0) scale(1)}
   50%{transform:translateX(-50%) translateY(-5px) scale(1.012)}}
 .pet-wrap[data-anim="bounce"]{animation:bounce .62s ease-in-out 3}
@@ -187,13 +187,24 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
 .pm-result .btns .ok{background:#f0876b;color:#fff}
 .pm-result .btns .ghost{background:#ffffff1f;color:#fff}
 
-#petImg{width:100%;height:100%;object-fit:contain;display:block;transition:transform .13s ease;
-  filter:drop-shadow(0 12px 16px rgba(120,80,60,.2))}
+#petImg{width:100%;height:100%;object-fit:contain;display:block;transition:transform .13s ease}
+.pet-shadow{position:absolute;left:18%;right:18%;bottom:4%;height:12px;border-radius:50%;
+  background:radial-gradient(ellipse at center,rgba(110,80,60,.26),rgba(110,80,60,0) 70%);
+  pointer-events:none;z-index:0}
+.doing{position:absolute;left:14px;top:14px;z-index:3;font-size:11.5px;color:#54655a;
+  background:rgba(255,255,255,.78);padding:5px 12px;border-radius:99px;font-weight:600;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;
+  transition:opacity .35s ease;pointer-events:none;white-space:nowrap}
+.doing.on{opacity:1}
 .gear{position:absolute;inset:0;pointer-events:none}
 .gear svg{position:absolute;inset:0;width:100%;height:100%}
 </style>
 </head>
 <body data-scene="grass">
+<link rel="preload" as="image" href="assets/tutu-normal.webp" />
+<link rel="preload" as="image" href="assets/tutu-happy.webp" />
+<link rel="preload" as="image" href="assets/tutu-love.webp" />
+<link rel="preload" as="image" href="assets/tutu-shy.webp" />
 <div class="app">
   <header>
     <div class="who">
@@ -212,8 +223,10 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     <div class="ground"></div>
 
     <div class="bubble" id="bubble"></div>
+    <div class="doing" id="doing">正在发呆</div>
     <div class="pet-wrap" id="petWrap" data-anim="none">
-      <img id="petImg" src="assets/tutu-normal.png" alt="秃秃" />
+      <div class="pet-shadow"></div>
+      <img id="petImg" src="assets/tutu-normal.webp" alt="秃秃" decoding="async" />
       <div class="gear">
         <svg id="hatA" viewBox="0 0 200 210" style="display:none">
           <ellipse cx="100" cy="47" rx="60" ry="10" fill="#e8c98f"/>
@@ -249,7 +262,7 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
   </section>
 
   <section class="actions">
-    <button class="act" data-do="feed"><span class="em">🍪</span><span>喂食</span></button>
+    <button class="act" data-do="feed"><span class="em">🍪</span><span>加餐</span></button>
     <button class="act" data-do="pet"><span class="em">✋</span><span>摸摸</span></button>
     <button class="act" data-do="play"><span class="em">🎾</span><span>玩耍</span></button>
     <button class="act" data-do="talk"><span class="em">💬</span><span>说句话</span></button>
@@ -444,10 +457,10 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
   }
 
   var FACE_SRC = {
-    normal: "assets/tutu-normal.png", happy: "assets/tutu-happy.png",
-    love: "assets/tutu-love.png", shy: "assets/tutu-shy.png",
-    sleep: "assets/tutu-normal.png", hungry: "assets/tutu-normal.png",
-    surprised: "assets/tutu-normal.png", eat: "assets/tutu-happy.png"
+    normal: "assets/tutu-normal.webp", happy: "assets/tutu-happy.webp",
+    love: "assets/tutu-love.webp", shy: "assets/tutu-shy.webp",
+    sleep: "assets/tutu-normal.webp", hungry: "assets/tutu-normal.webp",
+    surprised: "assets/tutu-normal.webp", eat: "assets/tutu-happy.webp"
   };
   function setFaceImg(f){
     var src = FACE_SRC[f] || FACE_SRC.normal;
@@ -581,28 +594,45 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
   }
 
   /* ---------- 自主行为 ---------- */
-  var BEHAVIORS = ["look","sway","walk","dance","yawn","sit","hum"];
+  var BEHAVIORS = ["look","sway","walk","dance","yawn","sit","hum","tidy","watch","sun"];
+  var DOING = {
+    look: "在东张西望", sway: "在轻轻摇摆", walk: "在草地上散步", dance: "在跳舞",
+    yawn: "在打哈欠", sit: "在坐着发呆", hum: "在小声哼歌", tidy: "在整理小窝",
+    watch: "在看云", sun: "在晒太阳", sleep: "在睡觉", eat: "自己找了点吃的",
+    hungry: "在找吃的", idle: "在发呆"
+  };
+  function setDoing(k, ms){
+    var el = $("doing");
+    if(!el) return;
+    if(k){ el.textContent = DOING[k] || k; el.classList.add("on"); }
+    clearTimeout(setDoing._t);
+    setDoing._t = setTimeout(function(){ el.classList.remove("on"); }, ms || 7000);
+  }
   function autoTick(){
-    // 状态自然变化（每 20 秒）
-    S.full = clamp(S.full - 0.28);
-    if(S.energy < 70) S.energy = clamp(S.energy + 0.5);
-    else S.energy = clamp(S.energy - 0.12);
-    if(S.full < 20) S.mood = clamp(S.mood - 0.5);
-    if(S.energy < 15) S.mood = clamp(S.mood - 0.3);
+    // 状态自然变化（每次约 8-14 秒）
+    S.full = clamp(S.full - 0.10);
+    if(S.energy < 70) S.energy = clamp(S.energy + 0.35);
+    else S.energy = clamp(S.energy - 0.08);
 
     // 睡觉时回精力
     if(wrap.getAttribute("data-anim") === "sleep"){
-      S.energy = clamp(S.energy + 0.9);
-      S.full = clamp(S.full - 0.1);
+      S.energy = clamp(S.energy + 0.8);
+      S.full = clamp(S.full - 0.06);
     }
 
-    // 随机行为
-    if(Math.random() < 0.3){
-      var b;
-      if(S.energy < 22) b = "sleep";
-      else if(S.full < 25) b = "hungry";
-      else b = pick(BEHAVIORS);
-      perform(b);
+    // 自己照顾自己：饿了会自己找吃的，困了会自己睡，不需要主人喂
+    if(S.full < 42){
+      S.full = clamp(S.full + 14);
+      setDoing("eat");
+      face("happy", 2600);
+      if(Math.random() < .45) say("我自己找了点苔藓吃，别担心。", 4200);
+      S.mood = clamp(S.mood + 2);
+    }else if(S.energy < 30){
+      perform("sleep");
+    }else if(Math.random() < 0.55){
+      perform(pick(BEHAVIORS));
+    }else{
+      setDoing("idle", 6000);
     }
     save();
   }
@@ -611,42 +641,70 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     if(b === "sleep"){
       anim("sleep", 0);
       face("sleep", 0);
+      setDoing("sleep", 9000);
       if(Math.random() < .4) say(pick(LINES.sleepy), 3800);
       return;
     }
     if(b === "hungry"){
       face("hungry", 3200);
+      setDoing("hungry", 5000);
       if(Math.random() < .5) say(pick(LINES.hungry), 3800);
       return;
     }
     if(b === "look"){
       face("normal", 2200);
       pet.style.transformOrigin = "center bottom";
+      setDoing("look", 4500);
       return;
     }
     if(b === "sway"){
       anim("sway", 2400);
       face("happy", 2400);
+      setDoing("sway", 4500);
       return;
     }
     if(b === "walk"){
       anim("walk", 2700);
       face("happy", 2700);
+      setDoing("walk", 5000);
       return;
     }
     if(b === "dance"){
       anim("bounce", 1300);
       face("love", 1600);
+      setDoing("dance", 3600);
       return;
     }
     if(b === "yawn"){
       face("sleep", 1800);
+      setDoing("yawn", 3600);
       say("啊……", 1500);
       return;
     }
     if(b === "sit" || b === "hum"){
       face("normal", 2000);
+      setDoing(b, 5000);
       if(Math.random() < .25) say(pick(LINES.idle), 4000);
+      return;
+    }
+    if(b === "tidy"){
+      anim("sway", 2600);
+      face("normal", 2600);
+      setDoing("tidy", 5000);
+      if(Math.random() < .3) say("我把小窝的边角理了理。", 4000);
+      return;
+    }
+    if(b === "watch"){
+      face("normal", 2400);
+      setDoing("watch", 5200);
+      if(Math.random() < .25) say("那朵云像一只慢慢游的鱼。", 4200);
+      return;
+    }
+    if(b === "sun"){
+      face("happy", 2800);
+      anim("sway", 2800);
+      setDoing("sun", 5600);
+      if(Math.random() < .25) say("晒一会儿，身上就暖了。", 4200);
       return;
     }
   }
@@ -803,8 +861,8 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
 
   face(baseFace(), 0);
 
-  setInterval(autoTick, 20000);
-  setInterval(render, 3000);
+  (function loopAuto(){ autoTick(); setTimeout(loopAuto, 8000 + Math.random()*6000); })();
+  setInterval(render, 4000);
   setInterval(function(){
     // 轻微眯眼，模拟眨眼
     if(Math.random() < .3){
@@ -845,8 +903,8 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
 
   /* ---------- 毛绒蘑菇图 ---------- */
   var PM_SRC = {
-    normal: "assets/tutu-normal.png", happy: "assets/tutu-happy.png",
-    love: "assets/tutu-love.png", shy: "assets/tutu-shy.png"
+    normal: "assets/tutu-normal.webp", happy: "assets/tutu-happy.webp",
+    love: "assets/tutu-love.webp", shy: "assets/tutu-shy.webp"
   };
 
   function getMushroom(f, cb){
