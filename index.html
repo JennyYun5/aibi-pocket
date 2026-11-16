@@ -179,6 +179,7 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
   align-items:center;justify-content:center;padding:20px;gap:12px}
 .pm-result.on{display:flex}
 .pm-result img{max-width:100%;max-height:66vh;border-radius:12px;box-shadow:0 16px 40px #0008}
+.pm-result video{max-width:100%;max-height:66vh;border-radius:12px;box-shadow:0 16px 40px #0008}
 .pm-result .tip{color:#fff;font-size:13px;font-weight:700}
 .pm-result .sub{color:#b9a795;font-size:11px;text-align:center;line-height:1.7}
 .pm-result .btns{display:flex;gap:10px}
@@ -307,9 +308,11 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
   <div class="pm-result" id="pmResult">
     <div class="tip">秃秃已经进到照片里啦</div>
     <img id="pmOut" alt="合成结果" />
-    <div class="sub">长按图片可以保存到相册</div>
+    <video id="pmOutVid" playsinline loop muted autoplay style="display:none"></video>
+    <div class="sub" id="pmSub">长按图片可以保存到相册</div>
     <div class="btns">
       <a class="ok" id="pmDownload" download="tutu-photo.png">下载原图</a>
+      <a class="ok" id="pmDownloadVid" download="tutu-photo.mp4" style="display:none">存动图</a>
       <button class="ghost" id="pmAgain">再玩一张</button>
     </div>
   </div>
@@ -930,32 +933,103 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     img.src = PM_SRC[f] || PM_SRC.normal;
   }
 
-  /* ---------- 绘制 ---------- */
-  function draw(){
+  /* ---------- 绘制（带呼吸/摇摆/浮动） ---------- */
+  function draw(t){
     if(!photo) return;
+    t = t || 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(photo, 0, 0, canvas.width, canvas.height);
     getMushroom(face, function(img){
-      // 地面投影，让蘑菇像站在照片里
-      var cx = mx + mw / 2, cy = my + mh * 0.93;
-      var g = ctx.createRadialGradient(cx, cy, 1, cx, cy, mw * 0.42);
+      var dh = mw * img.height / img.width;
+      var breath = 1 + Math.sin(t * 1.9) * 0.018;
+      var sway = Math.sin(t * 1.15) * 0.016;
+      var bob = Math.sin(t * 1.9) * mw * 0.006;
+      var cx = mx + mw / 2;
+      var footY = my + dh + bob;
+
+      // 地面投影：随呼吸微微变化，让脚像踩在地上
+      var g = ctx.createRadialGradient(cx, footY, 1, cx, footY, mw * 0.44);
       g.addColorStop(0, "rgba(60,40,30,0.34)");
       g.addColorStop(1, "rgba(60,40,30,0)");
       ctx.save();
       ctx.beginPath();
-      ctx.ellipse(cx, cy, mw * 0.42, mw * 0.13, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, footY, mw * 0.42, mw * 0.13, 0, 0, Math.PI * 2);
       ctx.fillStyle = g;
       ctx.fill();
       ctx.restore();
 
       ctx.save();
-      ctx.shadowColor = "rgba(50,30,20,0.28)";
-      ctx.shadowBlur = mw * 0.06;
-      ctx.shadowOffsetY = mw * 0.02;
-      var dh = mw * img.height / img.width;
-      ctx.drawImage(img, mx, my, mw, dh);
+      ctx.translate(cx, footY);
+      ctx.rotate(sway);
+      ctx.scale(1 / breath, breath);
+      ctx.shadowColor = "rgba(50,30,20,0.26)";
+      ctx.shadowBlur = mw * 0.05;
+      ctx.shadowOffsetY = mw * 0.015;
+      ctx.drawImage(img, -mw / 2, -dh, mw, dh);
       ctx.restore();
     });
+  }
+
+  /* ---------- 实时动画 ---------- */
+  var animOn = false, animT = 0, rafId = 0, faceTimer = 0, faceAuto = true, lastTs = 0;
+
+  function loop(ts){
+    if(!animOn) return;
+    if(!lastTs) lastTs = ts;
+    animT += Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+    draw(animT);
+    rafId = requestAnimationFrame(loop);
+  }
+  function startAnim(){
+    if(animOn) return;
+    animOn = true; lastTs = 0;
+    rafId = requestAnimationFrame(loop);
+    clearInterval(faceTimer);
+    faceTimer = setInterval(function(){
+      if(!faceAuto || dragging) return;
+      var pool = ["normal", "happy", "normal", "shy", "normal", "love", "normal"];
+      face = pool[Math.floor(Math.random() * pool.length)];
+    }, 2600);
+  }
+  function stopAnim(){
+    animOn = false;
+    cancelAnimationFrame(rafId);
+    clearInterval(faceTimer);
+  }
+
+  /* ---------- 自动找位置：扫描地平线 ---------- */
+  function autoPlace(){
+    var W = canvas.width, H = canvas.height;
+    var y0 = Math.floor(H * 0.35), y1 = Math.floor(H * 0.96);
+    var sh = Math.max(20, y1 - y0), sw = Math.min(160, W);
+    var tmp = document.createElement("canvas");
+    tmp.width = sw; tmp.height = sh;
+    var tc = tmp.getContext("2d");
+    tc.drawImage(canvas, 0, y0, W, y1 - y0, 0, 0, sw, sh);
+    var d, rows = new Float32Array(sh);
+    try { d = tc.getImageData(0, 0, sw, sh).data; } catch(e){ d = null; }
+    var groundY = Math.round(H * 0.84);
+    if(d){
+      for(var y = 0; y < sh; y++){
+        var s = 0;
+        for(var x = 0; x < sw; x++){
+          var i = (y * sw + x) * 4;
+          s += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        }
+        rows[y] = s / sw;
+      }
+      var bestY = -1, bestD = 0;
+      for(var yy = 6; yy < sh - 6; yy++){
+        var dd = Math.abs(rows[yy + 5] - rows[yy - 5]);
+        if(dd > bestD){ bestD = dd; bestY = yy; }
+      }
+      if(bestD > 10 && bestY > 0) groundY = y0 + bestY;
+    }
+    my = groundY - mh;
+    my = Math.max(-mh * 0.1, Math.min(H - mh * 0.6, my));
+    mx = (W - mw) / 2;
+    clampPos();
   }
 
   function clampPos(){
@@ -978,9 +1052,10 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
       mh = mw * 1.08;
       mx = (canvas.width - mw) / 2;
       my = canvas.height - mh - canvas.height * 0.07;
-      clampPos();
-      draw();
+      autoPlace();
+      draw(0);
       pm.classList.add("on");
+      startAnim();
       hint.style.opacity = "1";
       setTimeout(function(){ hint.style.opacity = "0"; }, 3200);
     }
@@ -1025,7 +1100,7 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     my += p.y - lastY;
     lastX = p.x; lastY = p.y;
     clampPos();
-    draw();
+    draw(animT);
   });
   function endDrag(e){
     if(!dragging) return;
@@ -1044,7 +1119,7 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     mx = cx - mw / 2;
     my = cy - mh * 0.85;
     clampPos();
-    draw();
+    draw(animT);
   });
 
   var faceBtns = document.querySelectorAll("[data-pf]");
@@ -1053,35 +1128,99 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
       Array.prototype.forEach.call(faceBtns, function(x){ x.classList.remove("sel"); });
       b.classList.add("sel");
       face = b.getAttribute("data-pf");
-      draw();
+      faceAuto = false;
+      clearTimeout(b._t);
+      b._t = setTimeout(function(){ faceAuto = true; }, 9000);
+      draw(animT);
     });
   });
 
   document.getElementById("btnPhoto").addEventListener("click", function(){ fileInput.click(); });
   document.getElementById("pmPick").addEventListener("click", function(){ fileInput.click(); });
-  document.getElementById("pmClose").addEventListener("click", function(){ pm.classList.remove("on"); });
+  document.getElementById("pmClose").addEventListener("click", function(){ stopAnim(); pm.classList.remove("on"); });
   fileInput.addEventListener("change", function(){
     var f = this.files && this.files[0];
     if(f) loadPhoto(f);
     this.value = "";
   });
 
-  /* ---------- 保存 ---------- */
-  document.getElementById("pmSave").addEventListener("click", function(){
+  /* ---------- 保存：录制一小段动态 ---------- */
+  var outVid = document.getElementById("pmOutVid");
+  var dlVid = document.getElementById("pmDownloadVid");
+  var pmSub = document.getElementById("pmSub");
+  var saveBtn = document.getElementById("pmSave");
+
+  function pickMime(){
+    if(!window.MediaRecorder) return null;
+    var list = ["video/mp4;codecs=avc1.42E01E", "video/mp4", "video/webm;codecs=vp9", "video/webm"];
+    for(var i = 0; i < list.length; i++){
+      try { if(MediaRecorder.isTypeSupported(list[i])) return list[i]; } catch(e){}
+    }
+    return null;
+  }
+
+  function recordClip(sec){
+    return new Promise(function(resolve){
+      var mt = pickMime();
+      if(!mt || !canvas.captureStream){ resolve(null); return; }
+      var stream, rec;
+      try {
+        stream = canvas.captureStream(30);
+        rec = new MediaRecorder(stream, { mimeType: mt, videoBitsPerSecond: 5000000 });
+      } catch(e){ resolve(null); return; }
+      var chunks = [];
+      rec.ondataavailable = function(e){ if(e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop = function(){
+        var blob = new Blob(chunks, { type: mt.split(";")[0] });
+        resolve({ blob: blob, mime: mt });
+      };
+      rec.start();
+      setTimeout(function(){ try { rec.stop(); } catch(e){} }, sec * 1000);
+    });
+  }
+
+  saveBtn.addEventListener("click", function(){
     if(!photo) return;
-    draw();
-    setTimeout(function(){
-      canvas.toBlob(function(blob){
-        if(!blob) return;
-        var url = URL.createObjectURL(blob);
-        outImg.src = url;
-        dl.href = url;
+    if(saveBtn.disabled) return;
+    saveBtn.disabled = true;
+    var label = saveBtn.textContent;
+    saveBtn.textContent = "生成中…";
+    recordClip(4).then(function(res){
+      if(res && res.blob && res.blob.size > 1000){
+        var vurl = URL.createObjectURL(res.blob);
+        outVid.src = vurl;
+        outVid.style.display = "block";
+        outImg.style.display = "none";
+        dlVid.href = vurl;
+        dlVid.download = /mp4/.test(res.mime) ? "tutu-photo.mp4" : "tutu-photo.webm";
+        dlVid.style.display = "inline-block";
+        dl.style.display = "none";
+        pmSub.textContent = "长按动图可以保存到相册";
         resultBox.classList.add("on");
-      }, "image/png", 0.95);
-    }, 120);
+        try { outVid.play(); } catch(e){}
+      } else {
+        // 浏览器不支持录制时，回退成静态图
+        draw(animT);
+        canvas.toBlob(function(blob){
+          if(!blob) return;
+          var url = URL.createObjectURL(blob);
+          outImg.src = url;
+          outImg.style.display = "block";
+          outVid.style.display = "none";
+          dl.href = url;
+          dl.style.display = "inline-block";
+          dlVid.style.display = "none";
+          pmSub.textContent = "长按图片可以保存到相册";
+          resultBox.classList.add("on");
+        }, "image/png", 0.95);
+      }
+      saveBtn.disabled = false;
+      saveBtn.textContent = label;
+    });
   });
   document.getElementById("pmAgain").addEventListener("click", function(){
     resultBox.classList.remove("on");
+    stopAnim();
     pm.classList.remove("on");
     fileInput.click();
   });
