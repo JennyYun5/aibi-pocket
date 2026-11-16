@@ -97,7 +97,7 @@ body[data-scene="night"] .ground{background:linear-gradient(180deg,#3f4a6b,#3540
   width:14px;height:14px;background:#fffdf8;border-right:1px solid #f0e2d2;border-bottom:1px solid #f0e2d2;transform:rotate(45deg)}
 
 /* 特效 */
-.fx{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.fx{position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:4}
 .heart,.crumb{position:absolute;font-size:16px;animation:floatUp 1.5s ease-out forwards}
 @keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(.8)}
   100%{opacity:0;transform:translateY(-70px) scale(1.15)}}
@@ -187,7 +187,8 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
 .pm-result .btns .ok{background:#f0876b;color:#fff}
 .pm-result .btns .ghost{background:#ffffff1f;color:#fff}
 
-#petImg{width:100%;height:100%;object-fit:contain;display:block;transition:transform .13s ease}
+.pet-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+  display:block;z-index:1;transition:opacity .16s ease;will-change:opacity}
 .pet-shadow{position:absolute;left:18%;right:18%;bottom:4%;height:12px;border-radius:50%;
   background:radial-gradient(ellipse at center,rgba(110,80,60,.26),rgba(110,80,60,0) 70%);
   pointer-events:none;z-index:0}
@@ -196,7 +197,7 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;
   transition:opacity .35s ease;pointer-events:none;white-space:nowrap}
 .doing.on{opacity:1}
-.gear{position:absolute;inset:0;pointer-events:none}
+.gear{position:absolute;inset:0;pointer-events:none;z-index:2}
 .gear svg{position:absolute;inset:0;width:100%;height:100%}
 </style>
 </head>
@@ -227,6 +228,7 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     <div class="pet-wrap" id="petWrap" data-anim="none">
       <div class="pet-shadow"></div>
       <img id="petImg" src="assets/tutu-normal.webp" alt="秃秃" decoding="async" />
+      <img id="petImgB" src="assets/tutu-normal.webp" alt="" decoding="async" style="opacity:0" />
       <div class="gear">
         <svg id="hatA" viewBox="0 0 200 210" style="display:none">
           <ellipse cx="100" cy="47" rx="60" ry="10" fill="#e8c98f"/>
@@ -464,8 +466,21 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
   };
   function setFaceImg(f){
     var src = FACE_SRC[f] || FACE_SRC.normal;
-    if(petImg.getAttribute("src") !== src) petImg.setAttribute("src", src);
+    if(curSrc === src) return;
+    curSrc = src;
+    var show = (frontImg === petImg) ? petImgB : petImg;
+    var hide = frontImg;
+    var swap = function(){
+      show.style.opacity = "1";
+      hide.style.opacity = "0";
+      frontImg = show;
+      show.onload = null;
+    };
+    show.onload = swap;
+    show.setAttribute("src", src);
+    if(show.complete && show.naturalWidth) swap();
   }
+  var frontImg = petImg, curSrc = petImg.getAttribute("src");
   function face(f, ms){
     setFaceImg(f);
     if(ms){
@@ -605,8 +620,6 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     var el = $("doing");
     if(!el) return;
     if(k){ el.textContent = DOING[k] || k; el.classList.add("on"); }
-    clearTimeout(setDoing._t);
-    setDoing._t = setTimeout(function(){ el.classList.remove("on"); }, ms || 7000);
   }
   function autoTick(){
     // 状态自然变化（每次约 8-14 秒）
