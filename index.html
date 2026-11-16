@@ -341,6 +341,9 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
   }
 
   var S = load();
+  // 她自己的事自己会处理：进来时如果状态太低，先自己吃点、歇一会儿
+  if(S.full < 52) S.full = 60;
+  if(S.energy < 42) S.energy = 52;
 
   function load(){
     var raw = null;
