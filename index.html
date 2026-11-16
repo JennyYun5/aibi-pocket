@@ -152,6 +152,40 @@ body[data-scene="night"] .ground{background:linear-gradient(180deg,#3f4a6b,#3540
 .talkbox button{border:0;background:#f0876b;color:#fff;font-family:inherit;font-weight:700;
   font-size:13px;padding:0 18px;border-radius:99px}
 footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
+
+/* ---------- 照片模式 ---------- */
+.photo-mode{position:absolute;inset:0;z-index:40;background:#1b1714;display:none;flex-direction:column}
+.photo-mode.on{display:flex}
+.pm-top{display:flex;align-items:center;gap:10px;padding:14px 16px 10px;color:#fff}
+.pm-top .pm-t{flex:1;font-size:14px;font-weight:700;text-align:center}
+.pm-top button{border:0;font-family:inherit;font-size:12px;font-weight:700;border-radius:99px;padding:8px 14px;cursor:pointer}
+#pmClose{background:#ffffff1f;color:#fff;width:34px;height:34px;padding:0;font-size:15px}
+#pmSave{background:#f0876b;color:#fff}
+.pm-stage{flex:1;display:flex;align-items:center;justify-content:center;padding:0 10px;overflow:hidden;position:relative}
+#pmCanvas{max-width:100%;max-height:100%;border-radius:12px;touch-action:none;box-shadow:0 12px 30px #0006}
+.pm-hint{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);background:#000000a6;color:#fff;
+  font-size:10.5px;padding:6px 12px;border-radius:99px;pointer-events:none;transition:opacity .4s;white-space:nowrap}
+.pm-tools{padding:10px 18px 18px;color:#e8dcd2}
+.pm-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.pm-lab{font-size:11px;color:#b9a795;width:30px;flex:none}
+#pmSize{flex:1;accent-color:#f0876b;height:22px}
+.pm-faces{gap:8px}
+.pm-faces button{width:38px;height:38px;border-radius:50%;border:1.5px solid #ffffff2e;background:#ffffff14;
+  font-size:17px;line-height:1;cursor:pointer;padding:0}
+.pm-faces button.sel{border-color:#f0876b;background:#f0876b33}
+.pm-pick{width:100%;border:1px dashed #ffffff33;background:none;color:#d8c8bb;font-family:inherit;
+  font-size:11.5px;padding:9px;border-radius:12px;margin-top:2px;cursor:pointer}
+.pm-result{position:absolute;inset:0;z-index:50;background:#141110f2;display:none;flex-direction:column;
+  align-items:center;justify-content:center;padding:20px;gap:12px}
+.pm-result.on{display:flex}
+.pm-result img{max-width:100%;max-height:66vh;border-radius:12px;box-shadow:0 16px 40px #0008}
+.pm-result .tip{color:#fff;font-size:13px;font-weight:700}
+.pm-result .sub{color:#b9a795;font-size:11px;text-align:center;line-height:1.7}
+.pm-result .btns{display:flex;gap:10px}
+.pm-result .btns button,.pm-result .btns a{border:0;font-family:inherit;font-size:12.5px;font-weight:700;
+  border-radius:99px;padding:10px 18px;cursor:pointer;text-decoration:none;display:inline-block}
+.pm-result .btns .ok{background:#f0876b;color:#fff}
+.pm-result .btns .ghost{background:#ffffff1f;color:#fff}
 </style>
 </head>
 <body data-scene="grass">
@@ -264,6 +298,44 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     <button data-sheet="dress">🎩 装扮</button>
     <button data-sheet="scene">🏡 小窝</button>
     <button data-sheet="diary">📖 今日小事</button>
+    <button id="btnPhoto">📷 进照片</button>
+  </div>
+
+  <div class="photo-mode" id="photoMode">
+    <div class="pm-top">
+      <button id="pmClose">✕</button>
+      <div class="pm-t">让秃秃进到照片里</div>
+      <button id="pmSave">保存</button>
+    </div>
+    <div class="pm-stage" id="pmStage">
+      <canvas id="pmCanvas"></canvas>
+      <div class="pm-hint" id="pmHint">拖动秃秃，放到你喜欢的位置</div>
+    </div>
+    <div class="pm-tools">
+      <div class="pm-row">
+        <span class="pm-lab">大小</span>
+        <input type="range" id="pmSize" min="10" max="80" value="34" />
+      </div>
+      <div class="pm-row pm-faces">
+        <span class="pm-lab">表情</span>
+        <button data-pf="normal" class="sel">🙂</button>
+        <button data-pf="happy">😄</button>
+        <button data-pf="love">😍</button>
+        <button data-pf="shy">😳</button>
+      </div>
+      <button class="pm-pick" id="pmPick">换一张照片</button>
+    </div>
+    <input type="file" id="pmFile" accept="image/*" hidden />
+  </div>
+
+  <div class="pm-result" id="pmResult">
+    <div class="tip">秃秃已经进到照片里啦</div>
+    <img id="pmOut" alt="合成结果" />
+    <div class="sub">长按图片可以保存到相册</div>
+    <div class="btns">
+      <a class="ok" id="pmDownload" download="tutu-photo.png">下载原图</a>
+      <button class="ghost" id="pmAgain">再玩一张</button>
+    </div>
   </div>
 
   <footer>秃秃 · 一只住在你手机里的数字小蘑菇 · <a href="./aibi.html" style="color:#c9a98c;text-decoration:none">旧版 AIBI</a></footer>
@@ -773,6 +845,219 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
   window.addEventListener("beforeunload", save);
   document.addEventListener("visibilitychange", function(){
     if(document.hidden) save();
+  });
+})();
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var pm = document.getElementById("photoMode");
+  var canvas = document.getElementById("pmCanvas");
+  var ctx = canvas.getContext("2d");
+  var fileInput = document.getElementById("pmFile");
+  var hint = document.getElementById("pmHint");
+  var sizeSlider = document.getElementById("pmSize");
+  var resultBox = document.getElementById("pmResult");
+  var outImg = document.getElementById("pmOut");
+  var dl = document.getElementById("pmDownload");
+
+  var photo = null, face = "normal";
+  var mx = 0, my = 0, mw = 0, mh = 0;
+  var imgCache = {};
+
+  /* ---------- 蘑菇 SVG ---------- */
+  var EYES = {
+    normal: '<ellipse cx="82" cy="139" rx="6" ry="7.4" fill="#4a3b33"/><ellipse cx="118" cy="139" rx="6" ry="7.4" fill="#4a3b33"/><circle cx="84" cy="136.5" r="2.1" fill="#fff"/><circle cx="120" cy="136.5" r="2.1" fill="#fff"/>',
+    happy: '<path d="M74 141 Q82 130 90 141" stroke="#4a3b33" stroke-width="4.2" fill="none" stroke-linecap="round"/><path d="M110 141 Q118 130 126 141" stroke="#4a3b33" stroke-width="4.2" fill="none" stroke-linecap="round"/>',
+    love: '<path d="M82 132 c-3-4.5-9.5-2-9.5 3 0 4.2 5.3 7.4 9.5 10.4 4.2-3 9.5-6.2 9.5-10.4 0-5-6.5-7.5-9.5-3z" fill="#e8654f"/><path d="M118 132 c-3-4.5-9.5-2-9.5 3 0 4.2 5.3 7.4 9.5 10.4 4.2-3 9.5-6.2 9.5-10.4 0-5-6.5-7.5-9.5-3z" fill="#e8654f"/>',
+    shy: '<path d="M74 141 Q82 130 90 141" stroke="#4a3b33" stroke-width="4.2" fill="none" stroke-linecap="round"/><path d="M110 141 Q118 130 126 141" stroke="#4a3b33" stroke-width="4.2" fill="none" stroke-linecap="round"/>'
+  };
+  var MOUTHS = {
+    normal: '<path d="M94 152 Q100 159 106 152" stroke="#4a3b33" stroke-width="3.6" fill="none" stroke-linecap="round"/>',
+    happy: '<ellipse cx="100" cy="157" rx="7" ry="8" fill="#8a5a4a"/>',
+    love: '<ellipse cx="100" cy="157" rx="7" ry="8" fill="#8a5a4a"/>',
+    shy: '<path d="M94 152 Q100 159 106 152" stroke="#4a3b33" stroke-width="3.6" fill="none" stroke-linecap="round"/>'
+  };
+
+  function mushroomSVG(f){
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 210" width="200" height="210">' +
+      '<defs>' +
+        '<linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffbca6"/><stop offset="1" stop-color="#ee7d61"/></linearGradient>' +
+        '<linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffaf1"/><stop offset="1" stop-color="#f5e3ca"/></linearGradient>' +
+      '</defs>' +
+      '<ellipse cx="80" cy="197" rx="16" ry="9" fill="#f0d9bd"/><ellipse cx="120" cy="197" rx="16" ry="9" fill="#f0d9bd"/>' +
+      '<ellipse cx="50" cy="152" rx="10" ry="7" fill="#f9ecd9"/><ellipse cx="150" cy="152" rx="10" ry="7" fill="#f9ecd9"/>' +
+      '<path d="M74 112 L126 112 L130 168 Q130 189 100 189 Q70 189 70 168 Z" fill="url(#s)"/>' +
+      '<path d="M24 108 Q24 34 100 34 Q176 34 176 108 Q176 118 164 118 L36 118 Q24 118 24 108 Z" fill="url(#c)"/>' +
+      '<circle cx="62" cy="70" r="10" fill="#fff" opacity="0.5"/><circle cx="104" cy="55" r="7" fill="#fff" opacity="0.42"/><circle cx="141" cy="79" r="12" fill="#fff" opacity="0.46"/><circle cx="86" cy="95" r="5" fill="#fff" opacity="0.36"/>' +
+      (EYES[f] || EYES.normal) +
+      '<ellipse cx="66" cy="153" rx="9" ry="5" fill="#ff9d8a" opacity="0.45"/><ellipse cx="134" cy="153" rx="9" ry="5" fill="#ff9d8a" opacity="0.45"/>' +
+      (MOUTHS[f] || MOUTHS.normal) +
+      '</svg>';
+  }
+
+  function getMushroom(f, cb){
+    if(imgCache[f]){ cb(imgCache[f]); return; }
+    var img = new Image();
+    img.onload = function(){ imgCache[f] = img; cb(img); };
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(mushroomSVG(f));
+  }
+
+  /* ---------- 绘制 ---------- */
+  function draw(){
+    if(!photo) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(photo, 0, 0, canvas.width, canvas.height);
+    getMushroom(face, function(img){
+      // 地面投影，让蘑菇像站在照片里
+      var cx = mx + mw / 2, cy = my + mh * 0.93;
+      var g = ctx.createRadialGradient(cx, cy, 1, cx, cy, mw * 0.42);
+      g.addColorStop(0, "rgba(60,40,30,0.34)");
+      g.addColorStop(1, "rgba(60,40,30,0)");
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, mw * 0.42, mw * 0.13, 0, 0, Math.PI * 2);
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      ctx.shadowColor = "rgba(50,30,20,0.28)";
+      ctx.shadowBlur = mw * 0.06;
+      ctx.shadowOffsetY = mw * 0.02;
+      ctx.drawImage(img, mx, my, mw, mh);
+      ctx.restore();
+    });
+  }
+
+  function clampPos(){
+    var W = canvas.width, H = canvas.height;
+    mx = Math.max(-mw * 0.15, Math.min(W - mw * 0.85, mx));
+    my = Math.max(-mh * 0.1, Math.min(H - mh * 0.75, my));
+  }
+
+  /* ---------- 载入照片 ---------- */
+  function loadPhoto(file){
+    if(!file) return;
+    var MAX = 1800;
+    function useImg(im, w, h){
+      var k = 1;
+      if(Math.max(w, h) > MAX) k = MAX / Math.max(w, h);
+      canvas.width = Math.round(w * k);
+      canvas.height = Math.round(h * k);
+      photo = im;
+      mw = canvas.width * (parseInt(sizeSlider.value, 10) / 100);
+      mh = mw * 210 / 200;
+      mx = (canvas.width - mw) / 2;
+      my = canvas.height - mh - canvas.height * 0.07;
+      clampPos();
+      draw();
+      pm.classList.add("on");
+      hint.style.opacity = "1";
+      setTimeout(function(){ hint.style.opacity = "0"; }, 3200);
+    }
+    if(window.createImageBitmap){
+      createImageBitmap(file, {imageOrientation: "from-image"}).then(function(bm){
+        useImg(bm, bm.width, bm.height);
+      }).catch(function(){ fallback(file, useImg); });
+    } else {
+      fallback(file, useImg);
+    }
+  }
+
+  function fallback(file, useImg){
+    var url = URL.createObjectURL(file);
+    var im = new Image();
+    im.onload = function(){ useImg(im, im.naturalWidth, im.naturalHeight); URL.revokeObjectURL(url); };
+    im.src = url;
+  }
+
+  /* ---------- 拖动 ---------- */
+  var dragging = false, lastX = 0, lastY = 0;
+  function toCanvas(e){
+    var r = canvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * canvas.width / r.width,
+             y: (e.clientY - r.top) * canvas.height / r.height };
+  }
+  canvas.addEventListener("pointerdown", function(e){
+    if(!photo) return;
+    var p = toCanvas(e);
+    var pad = mw * 0.12;
+    if(p.x >= mx - pad && p.x <= mx + mw + pad && p.y >= my - pad && p.y <= my + mh + pad){
+      dragging = true;
+      lastX = p.x; lastY = p.y;
+      canvas.setPointerCapture(e.pointerId);
+      hint.style.opacity = "0";
+    }
+  });
+  canvas.addEventListener("pointermove", function(e){
+    if(!dragging) return;
+    var p = toCanvas(e);
+    mx += p.x - lastX;
+    my += p.y - lastY;
+    lastX = p.x; lastY = p.y;
+    clampPos();
+    draw();
+  });
+  function endDrag(e){
+    if(!dragging) return;
+    dragging = false;
+    try { canvas.releasePointerCapture(e.pointerId); } catch(err){}
+  }
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+
+  /* ---------- 控件 ---------- */
+  sizeSlider.addEventListener("input", function(){
+    if(!photo) return;
+    var cx = mx + mw / 2, cy = my + mh * 0.85;
+    mw = canvas.width * (parseInt(sizeSlider.value, 10) / 100);
+    mh = mw * 210 / 200;
+    mx = cx - mw / 2;
+    my = cy - mh * 0.85;
+    clampPos();
+    draw();
+  });
+
+  var faceBtns = document.querySelectorAll("[data-pf]");
+  Array.prototype.forEach.call(faceBtns, function(b){
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(faceBtns, function(x){ x.classList.remove("sel"); });
+      b.classList.add("sel");
+      face = b.getAttribute("data-pf");
+      draw();
+    });
+  });
+
+  document.getElementById("btnPhoto").addEventListener("click", function(){ fileInput.click(); });
+  document.getElementById("pmPick").addEventListener("click", function(){ fileInput.click(); });
+  document.getElementById("pmClose").addEventListener("click", function(){ pm.classList.remove("on"); });
+  fileInput.addEventListener("change", function(){
+    var f = this.files && this.files[0];
+    if(f) loadPhoto(f);
+    this.value = "";
+  });
+
+  /* ---------- 保存 ---------- */
+  document.getElementById("pmSave").addEventListener("click", function(){
+    if(!photo) return;
+    draw();
+    setTimeout(function(){
+      canvas.toBlob(function(blob){
+        if(!blob) return;
+        var url = URL.createObjectURL(blob);
+        outImg.src = url;
+        dl.href = url;
+        resultBox.classList.add("on");
+      }, "image/png", 0.95);
+    }, 120);
+  });
+  document.getElementById("pmAgain").addEventListener("click", function(){
+    resultBox.classList.remove("on");
+    pm.classList.remove("on");
+    fileInput.click();
   });
 })();
 </script>
