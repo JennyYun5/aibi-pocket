@@ -266,16 +266,7 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     <div class="stat"><span class="ic">✨</span><div class="bar" id="bBond"><i style="width:0%"></i></div></div>
   </section>
 
-  <section class="actions">
-    <button class="act" data-do="feed"><span class="em">🍪</span><span>加餐</span></button>
-    <button class="act" data-do="pet"><span class="em">✋</span><span>摸摸</span></button>
-    <button class="act" data-do="play"><span class="em">🎾</span><span>玩耍</span></button>
-    <button class="act" data-do="talk"><span class="em">💬</span><span>说句话</span></button>
-  </section>
-
   <div class="mini">
-    <button data-sheet="dress">🎩 装扮</button>
-    <button data-sheet="scene">🏡 小窝</button>
     <button data-sheet="diary">📖 今日小事</button>
     <button id="btnPhoto">📷 进照片</button>
   </div>
@@ -394,6 +385,7 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
 
   /* ---------- 台词 ---------- */
   var LINES = {
+
     greetLong: ["你回来啦。我刚才一直在数云。","你不在的时候，我睡了一小会儿。","我刚刚还想着，你会不会来。"],
     greetShort: ["你来啦。","嗯，我在。","今天也见面了。"],
     idle: ["今天的风是甜的。","我在想，蘑菇会不会做梦。","伞盖好像又圆了一点点。","安静的时候，能听见你手机在呼吸。","我不吵你，我就待在这儿。"],
@@ -406,6 +398,64 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     night: ["天黑了，你也早点睡。","夜里凉，记得盖被子。"],
     wake: ["唔……我醒了。","刚才梦到一颗很大的露水。"]
   };
+
+  /* ---------- 自己的作息表：到点自己做事 ---------- */
+  var ROUTINE = [
+    { h: 0,  key: "sleep",    doing: "在睡觉",       face: "sleep"  },
+    { h: 6,  key: "lazy",     doing: "在赖床",       face: "sleep"  },
+    { h: 7,  key: "wake",     doing: "刚起床",       face: "normal" },
+    { h: 8,  key: "breakfast",doing: "在吃早饭",     face: "happy"  },
+    { h: 9,  key: "outing",   doing: "出门玩了",     face: "happy"  },
+    { h: 11, key: "backhome", doing: "在回家路上",   face: "normal" },
+    { h: 12, key: "nap",      doing: "在午睡",       face: "sleep"  },
+    { h: 14, key: "wakeup",   doing: "刚睡醒",       face: "normal" },
+    { h: 15, key: "playmate", doing: "和朋友在玩",   face: "love"   },
+    { h: 18, key: "dinner",   doing: "在吃晚饭",     face: "happy"  },
+    { h: 19, key: "sunset",   doing: "在看夕阳",     face: "happy"  },
+    { h: 21, key: "tidy",     doing: "在整理小窝",   face: "normal" },
+    { h: 22, key: "sleepy",   doing: "准备睡觉了",   face: "sleep"  }
+  ];
+
+  var FRIENDS = ["小蜗牛慢慢", "瓢虫点点", "蚂蚁阿力", "蒲公英毛毛"];
+
+  var EVENTS = [
+    "我和{friend}去了小河边，水凉凉的。",
+    "{friend}教我滚下小坡，我滚了三圈，头有点晕。",
+    "我们躲在蒲公英底下乘凉，聊了很久。",
+    "{friend}捡到一颗亮亮的小石子，送给我了。",
+    "我看见一只蝴蝶，追了两步就没追了。",
+    "{friend}说我伞盖上的白点像星星，我开心了一下午。",
+    "我自己数了数草叶，一共十七根。",
+    "风把我的帽子吹歪了，我自己扶正的。",
+    "{friend}来找我，我们并排坐着看云。",
+    "我学会原地转圈不晕了，转了五次。",
+    "下了一小阵雨，我躲在叶子下面等它停。",
+    "{friend}送了我一片很软的干苔藓，我铺在小窝里了。"
+  ];
+
+  var ARRIVE = {
+    sleep:    ["呼……我还在睡。", "唔……你来了呀，我梦到一朵会走的云。"],
+    lazy:     ["再睡五分钟嘛……被子里暖和。", "我醒了，但还不想起。"],
+    wake:     ["早呀，我刚伸了个懒腰。", "我刚起床，头发还乱着。"],
+    breakfast:["我在吃早饭，今天有苔藓粥。", "早上的露水是甜的。"],
+    outing:   ["我刚从小河边回来，鞋上还有泥。", "今天外面风很好，我出去走了走。"],
+    backhome: ["我在往家走，太阳有点晒。", "该回家吃饭啦。"],
+    nap:      ["嘘……我在午睡。", "我睡一会儿，就一会儿。"],
+    wakeup:   ["我醒啦，脸上还有睡痕。", "刚睡醒，有点懵。"],
+    playmate: ["{friend}刚走，我们玩了一下午。", "我在等{friend}，说好了一起去滚草坡。"],
+    dinner:   ["晚饭吃得有点撑。", "我在慢慢吃，今天有软软的苔藓。"],
+    sunset:   ["天是橘色的，很好看。", "我在看夕阳，光落在伞盖上暖暖的。"],
+    tidy:     ["我把小窝的叶子重新铺了一遍。", "在整理小窝，有点困了。"],
+    sleepy:   ["困了……今天过得挺好的。", "准备睡了，你也早点休息。"]
+  };
+
+  function slotOf(h){
+    var cur = ROUTINE[0];
+    for(var i = 0; i < ROUTINE.length; i++){
+      if(h >= ROUTINE[i].h) cur = ROUTINE[i];
+    }
+    return cur;
+  }
 
   function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
@@ -635,25 +685,38 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     if(S.energy < 70) S.energy = clamp(S.energy + 0.35);
     else S.energy = clamp(S.energy - 0.08);
 
-    // 睡觉时回精力
-    if(wrap.getAttribute("data-anim") === "sleep"){
-      S.energy = clamp(S.energy + 0.8);
-      S.full = clamp(S.full - 0.06);
+    var slot = slotOf(new Date().getHours());
+
+    // 换时段时，自己记一笔「今日小事」
+    if(S.lastSlot !== slot.key){
+      if(S.lastSlot) addDiary(slot.doing);
+      S.lastSlot = slot.key;
     }
 
-    // 自己照顾自己：饿了会自己找吃的，困了会自己睡，不需要主人喂
-    if(S.full < 42){
-      S.full = clamp(S.full + 14);
-      setDoing("eat");
-      face("happy", 2600);
-      if(Math.random() < .45) say("我自己找了点苔藓吃，别担心。", 4200);
-      S.mood = clamp(S.mood + 2);
-    }else if(S.energy < 30){
-      perform("sleep");
-    }else if(Math.random() < 0.55){
-      perform(pick(BEHAVIORS));
-    }else{
-      setDoing("idle", 6000);
+    // 状态自愈：自己找吃的、自己歇着，不靠人喂
+    if(S.full < 42) S.full = clamp(S.full + 14);
+    if(S.energy < 30) S.energy = clamp(S.energy + 18);
+
+    // 睡觉时段：真的在睡
+    if(slot.key === "sleep" || slot.key === "nap"){
+      anim("sleep", 0);
+      face("sleep", 0);
+      S.energy = clamp(S.energy + 0.8);
+      setDoing(slot.doing);
+      save();
+      return;
+    }
+
+    // 其他时段：小动作 + 按作息显示在做的事
+    if(Math.random() < 0.45){
+      perform(pick(["look", "sway", "walk", "hum", "watch", "sun", "tidy"]));
+    }
+    setDoing(slot.doing);
+
+    // 偶尔自己开口说一句
+    if(Math.random() < 0.25){
+      var line = pick(ARRIVE[slot.key] || ["嗯。"]);
+      say(line.replace("{friend}", pick(FRIENDS)), 5200);
     }
     save();
   }
@@ -869,14 +932,29 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
 
   // 初始问候
   setTimeout(function(){
-    var h = new Date().getHours();
-    var greet;
-    if(hrsAway > 2) greet = pick(LINES.greetLong);
-    else greet = pick(LINES.greetShort);
-    if(S.full < 25) greet = pick(LINES.hungry);
-    else if(h >= 22 || h < 6) greet = pick(LINES.night);
-    say(greet, 5200);
-    if(hrsAway > 8) addDiary("你离开了 " + Math.round(hrsAway) + " 小时，我一直在等你");
+    var slot = slotOf(new Date().getHours());
+    var lines = [];
+    lines.push(pick(ARRIVE[slot.key] || ["我在这儿。"]).replace("{friend}", pick(FRIENDS)));
+
+    // 它自己过日子，每次见面都分享 1-2 件新鲜事（顺序轮换，不会重复）
+    var n = hrsAway > 8 ? 2 : 1;
+    for(var i = 0; i < n; i++){
+      S.storyIdx = ((S.storyIdx || 0) + 1) % EVENTS.length;
+      var ev = EVENTS[S.storyIdx].replace("{friend}", pick(FRIENDS));
+      lines.push(ev);
+      addDiary(ev);
+    }
+    if(hrsAway > 8) addDiary("你离开了 " + Math.round(hrsAway) + " 小时，我自己过完了这段时间");
+
+    setDoing(slot.doing);
+    face(slot.face, 0);
+
+    var idx = 0;
+    (function nextLine(){
+      if(idx >= lines.length) return;
+      say(lines[idx++], 4400);
+      setTimeout(nextLine, 4800);
+    })();
     save();
   }, 700);
 
