@@ -535,8 +535,13 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     stretch: "assets/anim-stretch.webp", run: "assets/anim-run.webp"
   };
   var animReady = {}, animTried = {};
-  function preloadAnims(){
-    Object.keys(ANIM_SRC).forEach(function(k){
+  function preloadAnims(priority){
+    var keys = Object.keys(ANIM_SRC);
+    if(priority && keys.indexOf(priority) > 0){
+      keys.splice(keys.indexOf(priority), 1);
+      keys.unshift(priority);
+    }
+    keys.forEach(function(k){
       if(animTried[k]) return;
       animTried[k] = true;
       var im = new Image();
@@ -1106,7 +1111,8 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
   }, 1800);
 
   // 空闲时把 4 段动作动画预加载好，切换时直接播
-  setTimeout(preloadAnims, 2600);
+  setTimeout(function(){ preloadAnims("squat"); }, 1200);
+  setTimeout(preloadAnims, 6000);
 
   window.addEventListener("beforeunload", save);
   document.addEventListener("visibilitychange", function(){
