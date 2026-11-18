@@ -529,6 +529,27 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     wave: "assets/tutu-wave.webp", squat: "assets/tutu-squat.webp",
     stretch: "assets/tutu-stretch.webp", run: "assets/tutu-run.webp"
   };
+  /* 视频动画（动图 WebP）：优先使用，失败回退到静态帧序列 */
+  var ANIM_SRC = {
+    wave: "assets/anim-wave.webp", squat: "assets/anim-squat.webp",
+    stretch: "assets/anim-stretch.webp", run: "assets/anim-run.webp"
+  };
+  var animReady = {}, animTried = {};
+  function preloadAnims(){
+    Object.keys(ANIM_SRC).forEach(function(k){
+      if(animTried[k]) return;
+      animTried[k] = true;
+      var im = new Image();
+      im.onload = function(){
+        if(im.naturalWidth > 0){
+          animReady[k] = true;
+          // 如果此刻正在做这个动作，立刻切换到更顺的动画版
+          if(curPose === k) playClip(k, 9000);
+        }
+      };
+      im.src = ANIM_SRC[k];
+    });
+  }
   /* 帧序列：用几张姿势图交替，演出连续动作 */
   var CLIPS = {
     wave:    { f: ["wave", "wave", "normal", "wave"], ms: 360 },
@@ -586,6 +607,20 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
   }
 
   function playClip(name, ms){
+    // 有视频动画就直接播，动作最顺
+    if(animReady[name]){
+      clearInterval(clipTimer);
+      clipTimer = null;
+      curPose = name;
+      petImg.className = "";
+      petImgB.className = "";
+      setSprite(ANIM_SRC[name]);
+      clearTimeout(playClip._t);
+      if(ms) playClip._t = setTimeout(function(){
+        if(curPose === name) stopClip();
+      }, ms);
+      return;
+    }
     var c = CLIPS[name];
     if(!c) return;
     clearInterval(clipTimer);
@@ -1069,6 +1104,9 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     ["happy","love","shy"].forEach(function(k){ var i = new Image(); i.src = FACE_SRC[k]; });
     Object.keys(POSE_SRC).forEach(function(k){ var i = new Image(); i.src = POSE_SRC[k]; });
   }, 1800);
+
+  // 空闲时把 4 段动作动画预加载好，切换时直接播
+  setTimeout(preloadAnims, 2600);
 
   window.addEventListener("beforeunload", save);
   document.addEventListener("visibilitychange", function(){
