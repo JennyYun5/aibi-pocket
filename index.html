@@ -205,7 +205,7 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
 .pose-run{animation:poseRun .6s ease-in-out infinite}
 @keyframes poseRun{0%,100%{transform:translateY(0) rotate(-2deg)}
   50%{transform:translateY(-6px) rotate(2deg)}}
-  display:block;z-index:1;transition:opacity .16s ease;will-change:opacity}
+  display:block;z-index:1;transition:opacity .07s ease;will-change:opacity}
 .pet-shadow{position:absolute;left:18%;right:18%;bottom:4%;height:12px;border-radius:50%;
   background:radial-gradient(ellipse at center,rgba(110,80,60,.26),rgba(110,80,60,0) 70%);
   pointer-events:none;z-index:0}
@@ -494,9 +494,10 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     $("dayText").textContent = "相处的第 " + days + " 天";
 
     document.body.setAttribute("data-scene", S.scene || "grass");
-    $("hatA").style.display = (S.hat === "A") ? "" : "none";
-    $("hatB").style.display = (S.hat === "B") ? "" : "none";
-    $("scarfG").style.display = (S.scarf === "s") ? "" : "none";
+    // 装扮入口已移除：SVG 帽子/围巾不再叠加，避免生硬的贴图感
+    $("hatA").style.display = "none";
+    $("hatB").style.display = "none";
+    $("scarfG").style.display = "none";
     $("flowerG").style.display = S.flower ? "" : "none";
     $("clock").textContent = clockText();
   }
@@ -521,14 +522,23 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
   var FACE_SRC = {
     normal: "assets/tutu-normal.webp", happy: "assets/tutu-happy.webp",
     love: "assets/tutu-love.webp", shy: "assets/tutu-shy.webp",
-    sleep: "assets/tutu-normal.webp", hungry: "assets/tutu-normal.webp",
+    sleep: "assets/tutu-sleep.webp", hungry: "assets/tutu-normal.webp",
     surprised: "assets/tutu-normal.webp", eat: "assets/tutu-happy.webp"
   };
   var POSE_SRC = {
     wave: "assets/tutu-wave.webp", squat: "assets/tutu-squat.webp",
     stretch: "assets/tutu-stretch.webp", run: "assets/tutu-run.webp"
   };
+  /* 帧序列：用几张姿势图交替，演出连续动作 */
+  var CLIPS = {
+    wave:    { f: ["wave", "wave", "normal", "wave"], ms: 360 },
+    squat:   { f: ["squat", "squat", "normal", "squat"], ms: 640 },
+    stretch: { f: ["stretch", "stretch", "normal", "stretch"], ms: 620 },
+    run:     { f: ["run", "run", "normal", "run"], ms: 240 },
+    peek:    { f: ["normal", "happy", "normal", "love"], ms: 900 }
+  };
   var curPose = null;
+  var clipTimer = null;
 
   function setSprite(src){
     if(curSrc === src) return;
@@ -567,6 +577,31 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     petImg.className = "";
     petImgB.className = "";
     setFaceImg(baseFace());
+  }
+
+  function stopClip(){
+    clearInterval(clipTimer);
+    clipTimer = null;
+    clearPose();
+  }
+
+  function playClip(name, ms){
+    var c = CLIPS[name];
+    if(!c) return;
+    clearInterval(clipTimer);
+    curPose = name;
+    petImg.className = "";
+    petImgB.className = "";
+    var i = 0;
+    var step = function(){
+      var k = c.f[i % c.f.length];
+      i++;
+      setSprite(POSE_SRC[k] || FACE_SRC[k] || FACE_SRC.normal);
+    };
+    step();
+    clipTimer = setInterval(step, c.ms);
+    clearTimeout(playClip._t);
+    if(ms) playClip._t = setTimeout(stopClip, ms);
   }
   var frontImg = petImg, curSrc = petImg.getAttribute("src");
   function face(f, ms){
@@ -612,8 +647,6 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
       setTimeout(function(){ say("我好像……长大了一点。现在是「" + after + "」了。", 5200); }, 1400);
       addDiary("我长大了，进入「" + after + "」");
       // 成长解锁
-      if(after === "小菇芽" && !S.hat) S.hat = "A";
-      if(after === "圆头菇") S.scarf = "s";
       if(after === "胖胖菇") S.flower = true;
       if(after === "开花菇") S.scene = S.scene || "grass";
     }
@@ -741,17 +774,21 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
     var poseForSlot = {
       outing: ["run", "wave"], playmate: ["wave", "squat"],
       wake: ["stretch"], wakeup: ["stretch"], sunset: ["squat"],
-      breakfast: ["squat"], dinner: ["squat"]
+      breakfast: ["squat"], dinner: ["squat"],
+      tidy: ["squat", "wave"], backhome: ["run"], lazy: ["stretch"]
     }[slot.key];
 
     if(!curPose){
-      if(Math.random() < 0.55 && poseForSlot){
-        pose(pick(poseForSlot), 9000);
-      }else if(Math.random() < 0.35){
-        // 偶尔蹲下来看蚂蚁、看看草
-        pose("squat", 8000);
+      var r = Math.random();
+      if(r < 0.5 && poseForSlot){
+        playClip(pick(poseForSlot), 9000);
+      }else if(r < 0.72){
+        // 蹲下来看蚂蚁、看看草
+        playClip("squat", 8000);
         if(Math.random() < 0.5) say("有只蚂蚁在搬东西，我蹲着看了好久。", 5600);
-      }else if(Math.random() < 0.5){
+      }else if(r < 0.9){
+        playClip("peek", 6000);
+      }else{
         perform(pick(["look", "sway", "hum", "watch", "sun", "tidy"]));
       }
     }
@@ -995,9 +1032,16 @@ footer{text-align:center;font-size:10px;color:#b9a795;padding-bottom:8px}
 
     var arrivePose = {
       outing: "run", playmate: "wave", wake: "stretch", wakeup: "stretch",
-      sunset: "squat", breakfast: "squat", dinner: "squat"
+      sunset: "squat", breakfast: "squat", dinner: "squat",
+      tidy: "squat", backhome: "run", lazy: "stretch"
     }[slot.key];
-    if(arrivePose) pose(arrivePose, 12000);
+    // 一打开就有动作，不再是站着不动
+    if(slot.key === "sleep" || slot.key === "nap"){
+      face("sleep", 0);
+      anim("sleep", 0);
+    }else{
+      playClip(arrivePose || "peek", 12000);
+    }
 
     var idx = 0;
     (function nextLine(){
